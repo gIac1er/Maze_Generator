@@ -1,7 +1,4 @@
-# TODO: give user options to start the maze construction:
-# see the deconstruction of walls or not
-
-# temp having all functon in this file
+# TODO: give user a visual solver
 
 import tkinter as tk
 import random
@@ -21,15 +18,18 @@ def record_end_cell(row, col):
     global end_cell
     end_cell = (row, col)
 
-g_size = simpledialog.askinteger("Input", "Enter width/length:")
-grid = [[0 for _ in range(g_size)] for _ in range(g_size)]
-walls = [[{"top": True, "right": True, "bottom": True, "left": True}
-    for _ in range(g_size)] for _ in range(g_size)]
+row_size = simpledialog.askinteger("Input", "Enter number of rows:")
+col_size = simpledialog.askinteger("Input", "Enter number of columns:")
 
-cell_size = 35
+grid = [[0 for _ in range(col_size)] for _ in range(row_size)]
+walls = [[{"top": True, "right": True, "bottom": True, "left": True}
+          for _ in range(col_size)] for _ in range(row_size)]
+
+cell_size = 25
 root = tk.Tk()
 root.title("Grid")
-canvas = tk.Canvas(root, width=g_size * cell_size, height=g_size * cell_size)
+canvas = tk.Canvas(root, width=col_size * cell_size,
+                   height=row_size * cell_size)
 canvas.pack()
 
 # flags to enable cell selection 
@@ -39,19 +39,10 @@ label = tk.Label(root, text="Standby",
                       font=("Arial", 12), fg="red")
 label.pack()
 
-"""
-# text showing starting and ending cell coords
-start_cell_coords = canvas.create_text(
-    g_size * cell_size // 2, g_size * cell_size + 20, text="Not Selected", font=("Arial", 30), fill="blue")
-
-end_cell_coords = canvas.create_text(
-    100, 70, text="Not Selected", font=("Arial", 14), fill="green")
-"""
-
 def initialize_grid():
     canvas.delete("all")    # clear previous grid
-    for row in range(g_size):
-        for col in range(g_size):
+    for row in range(row_size):
+        for col in range(col_size):
             color_cell(row, col, "white")
     
 def set_cell(row, col, flag): 
@@ -112,7 +103,7 @@ def update_cell(event, flag):
         color_cell(end_cell[0], end_cell[1], "white")
         reset_cell(end_cell[0], end_cell[1])
         
-    if keep_running and 0 <= row < g_size and 0 <= col < g_size:  # click in bounds check
+    if keep_running and 0 <= row < row_size and 0 <= col < col_size:  # click in bounds check
         if grid[row][col] == 0:
             color = set_cell(row, col, flag)
         else:
@@ -123,9 +114,6 @@ def update_cell(event, flag):
     print("Ending cell:", end_cell)
     for row in grid:
         print(row)
-        
-def update_wall(prev, current):
-    pass
 
 # flag: 1 = start cell, 2 = end cell
 def start_wrapper():
@@ -155,24 +143,59 @@ def end_wrapper():
         canvas.bind("<Button-1>", lambda event: None)  # disable cell selection
 
 
+directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # up, down, left, right
+# visited grid, default value is false
+visited = [[False for _ in range(col_size)] for _ in range(row_size)]
 
-"""
-# just a test to remove top wall 
-# note that cell's top wall is removed, not the cell above's bottom wall
-def remove_wall(event):
-    # calculate cell clicked
-    col = event.x // cell_size
-    row = event.y // cell_size
-    print("2. x", col, "y", row)
+# NOTE: not ending at end_cell for now
+def dfs(prev, current, end):      # dfs algo that destory walls
+    # mark cell as visited
+    visited[current[0]][current[1]] = True
     
-    if 0 <= row < g_size and 0 <= col < g_size:
-        if (walls[row][col]["top"]):
-            walls[row][col]["top"] = False
-        else: 
-            walls[row][col]["top"] = True
-        draw_grid()
-"""    
-
+    if prev:
+        # came from top: -top_cell's bottom, -current_cell's top
+        if current[0] - prev[0] == 1:
+            walls[prev[0]][prev[1]]["bottom"] = False
+            walls[current[0]][current[1]]["top"] = False
+        # came from bottom: -bottom_cell's top, -current_cell's bottom
+        elif current[0] - prev[0] == -1:
+            walls[prev[0]][prev[1]]["top"] = False
+            walls[current[0]][current[1]]["bottom"] = False
+        # came from left: -left_cell's right, -current_cell's left
+        elif current[1] - prev[1] == 1:
+            walls[prev[0]][prev[1]]["right"] = False
+            walls[current[0]][current[1]]["left"] = False
+        # came from right: -right_cell's left, -current_cell's right
+        elif current[1] - prev[1] == -1:
+            walls[prev[0]][prev[1]]["left"] = False
+            walls[current[0]][current[1]]["right"] = False
+        color_cell(prev[0], prev[1], "white")
+        color_cell(current[0], current[1], "white")
+            
+    # random directions to make it more "maze-like"
+    random.shuffle(directions)
+    for direction in directions:
+        new_row = current[0] + direction[0]
+        new_col = current[1] + direction[1]
+        # in range check and not visited check
+        if (0 <= new_row and new_row < row_size) and (0 <= new_col and new_col < col_size) and (visited[new_row][new_col] == False):
+            dfs(current, (new_row, new_col), end)
+    
+# dfs button wrapper that calls dfs fx
+def dfs_wrapper():
+    if start_cell == (-1, -1) or end_cell == (-1, -1):
+        messagebox.showerror("Error", "Please select start/end cell first!")
+    else:
+        dfs(None, start_cell, end_cell)
+    color_cell(start_cell[0], start_cell[1], "blue")
+    color_cell(end_cell[0], end_cell[1], "green")
+    root.after(200, lambda: label.config(
+        text="Maze created! Start at blue, end at green", fg="green"))
+    canvas.bind("<Button-1>", lambda event: None)
+    start_cell_button.pack_forget()
+    end_cell_button.pack_forget()
+    dfs_button.pack_forget()
+    
 initialize_grid()
 
 # buttons
@@ -180,9 +203,11 @@ start_cell_button = tk.Button(root, text="Select a starting cell",
                             command=start_wrapper)
 end_cell_button = tk.Button(root, text="Select an ending cell",
                             command=end_wrapper)
-
+dfs_button = tk.Button(root, text="Begin Maze Construction",
+                            command=dfs_wrapper)
 
 start_cell_button.pack()
 end_cell_button.pack()
+dfs_button.pack()
 
 root.mainloop()
