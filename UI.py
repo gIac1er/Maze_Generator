@@ -204,16 +204,11 @@ def end_wrapper():
 
 # visited grid, default value is false
 visited = [[False for _ in range(col_size)] for _ in range(row_size)]
-end = False
 
 # NOTE: not ending at end_cell for now
 def dfs(prev, current, end):      # dfs algo that destory walls
     # mark cell as visited
     visited[current[0]][current[1]] = True
-    if (current == end):
-        end = True
-        return
-    
     if prev:
         # came from top: -top_cell's bottom, -current_cell's top
         if current[0] - prev[0] == 1:
@@ -240,7 +235,7 @@ def dfs(prev, current, end):      # dfs algo that destory walls
         new_row = current[0] + direction[0]
         new_col = current[1] + direction[1]
         # in range check and not visited check
-        if end and (0 <= new_row and new_row < row_size) and (0 <= new_col and new_col < col_size) and (visited[new_row][new_col] == False):
+        if (0 <= new_row and new_row < row_size) and (0 <= new_col and new_col < col_size) and (visited[new_row][new_col] == False):
             dfs(current, (new_row, new_col), end)
 
 # dfs button wrapper that calls dfs fx
