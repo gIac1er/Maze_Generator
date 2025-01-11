@@ -1,4 +1,4 @@
-# TODO: dynamically change cell_size based on inputed grid size?
+# TODO: add a algorithmic maze solver 
 import tkinter as tk
 import random
 import time
@@ -10,7 +10,9 @@ sys.setrecursionlimit(5000)  # recursive limit increased for large maze (dfs)
 # global variables 
 start_cell = (-1, -1)   # (row, col)
 end_cell = (-1, -1)     # (row, col)
-cell_size = 20
+cell_size = None        # calculated later
+screen_x = None         # screen resolution
+screen_y = None         # screen resolution
 directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # up, down, left, right
 start_select = False    # selection mode toggles
 end_select = False      # same as above 
@@ -39,12 +41,28 @@ class two_inputs_prompt(Dialog):
 
 root = tk.Tk()   # temp root
 root.withdraw()  # Hide the main window
-dialog = two_inputs_prompt(root, "Enter Grid Dimensions")
-if dialog.result:
-    print(f"Rows: {dialog.result[0]}, Columns: {dialog.result[1]}")
-row_size = dialog.result[0]
-col_size = dialog.result[1]
+# get screen resolution
+screen_x = root.winfo_screenwidth()
+screen_y = root.winfo_screenheight()
+dimensions = two_inputs_prompt(root, "Enter Grid Dimensions")
+if dimensions.result:
+    print(f"Rows: {dimensions.result[0]}, Columns: {dimensions.result[1]}")
+row_size = dimensions.result[0]
+col_size = dimensions.result[1]
 root.destroy()  # kill temp root
+
+# calculate cell_size
+def calculate_cell_size(x, y, length, height):
+    y_without_buttons = y - 170  # minus margin needed for the buttons at the bottom
+
+    # Calculate maximum cell size that fits the grid within available space
+    actual_x = x // length
+    actual_y = y_without_buttons // height
+
+    # Use the smaller dimension to ensure the grid fits both ways
+    return min(actual_x, actual_y)
+
+cell_size = calculate_cell_size(screen_x, screen_y, col_size, row_size)
 
 root = tk.Tk()
 root.title("Maze Generator")
@@ -186,11 +204,15 @@ def end_wrapper():
 
 # visited grid, default value is false
 visited = [[False for _ in range(col_size)] for _ in range(row_size)]
+end = False
 
 # NOTE: not ending at end_cell for now
 def dfs(prev, current, end):      # dfs algo that destory walls
     # mark cell as visited
     visited[current[0]][current[1]] = True
+    if (current == end):
+        end = True
+        return
     
     if prev:
         # came from top: -top_cell's bottom, -current_cell's top
@@ -218,7 +240,7 @@ def dfs(prev, current, end):      # dfs algo that destory walls
         new_row = current[0] + direction[0]
         new_col = current[1] + direction[1]
         # in range check and not visited check
-        if (0 <= new_row and new_row < row_size) and (0 <= new_col and new_col < col_size) and (visited[new_row][new_col] == False):
+        if end and (0 <= new_row and new_row < row_size) and (0 <= new_col and new_col < col_size) and (visited[new_row][new_col] == False):
             dfs(current, (new_row, new_col), end)
 
 # dfs button wrapper that calls dfs fx
